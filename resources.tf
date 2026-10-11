@@ -84,7 +84,7 @@ output "id" {
 }
 
 output "arn" {
-  description = "The ARN of the cluster. DocumentDB clusters live in the RDS ARN namespace, so this reads arn:aws:rds:...:cluster/..."
+  description = "The ARN of the cluster, in the RDS ARN namespace (arn:aws:rds:...:cluster/...)."
   value       = aws_docdb_cluster.resource.arn
 }
 
@@ -94,32 +94,32 @@ output "cluster_identifier" {
 }
 
 output "endpoint" {
-  description = "Primary endpoint of the cluster. Point a MongoDB driver here — it follows the current primary across a failover, so writes never need to be re-addressed."
+  description = "Primary endpoint. Point a MongoDB driver here; it follows the primary across a failover."
   value       = aws_docdb_cluster.resource.endpoint
 }
 
 output "reader_endpoint" {
-  description = "Reader endpoint of the cluster, load-balancing connections across its replicas. Use it with a read preference of secondaryPreferred. Empty until at least one replica exists."
+  description = "Reader endpoint, balancing across replicas. Use with read preference secondaryPreferred. Empty until a replica exists."
   value       = aws_docdb_cluster.resource.reader_endpoint
 }
 
 output "port" {
-  description = "Port the cluster accepts connections on, for the port element of a MongoDB connection string."
+  description = "Port the cluster accepts connections on."
   value       = aws_docdb_cluster.resource.port
 }
 
 output "hosted_zone_id" {
-  description = "Route53 hosted zone ID of the cluster's endpoint, for an alias record in terraform-aws-route53-record."
+  description = "Route 53 hosted zone ID of the endpoint, for an alias record in terraform-aws-route53-record."
   value       = aws_docdb_cluster.resource.hosted_zone_id
 }
 
 output "cluster_resource_id" {
-  description = "AWS's own immutable ID for the cluster, used in IAM policies that name the cluster resource rather than its identifier."
+  description = "Immutable resource ID of the cluster, used in IAM policies that name the cluster resource."
   value       = aws_docdb_cluster.resource.cluster_resource_id
 }
 
 output "master_user_secret" {
-  description = "Secrets Manager secret AWS created for the primary user password, when manage_master_user_password is enabled. Empty otherwise."
+  description = "Secrets Manager secret AWS created for the primary user password when manage_master_user_password is enabled. Empty otherwise."
   value       = aws_docdb_cluster.resource.master_user_secret
 }
 
@@ -129,6 +129,6 @@ output "instance_identifiers" {
 }
 
 output "instance_endpoints" {
-  description = "Per-instance endpoints, for connecting to one specific member rather than through the cluster's primary or reader endpoint."
+  description = "Per-instance endpoints, for connecting to one specific member."
   value       = aws_docdb_cluster_instance.resource[*].endpoint
 }
