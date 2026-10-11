@@ -3,6 +3,7 @@ name: Release
 on:
   push:
     branches: [main]
+  pull_request:
 
 permissions:
   contents: write
@@ -45,9 +46,12 @@ jobs:
           scan-ref: .
           severity: HIGH,CRITICAL
           exit-code: "1"
+        env:
+          TRIVY_TF_EXCLUDE_DOWNLOADED_MODULES: "true"
 
       - name: Version
         id: tag
+        if: github.event_name == 'push'
         uses: anothrNick/github-tag-action@4ed44965e0db8dab2b466a16da04aec3cc312fd8
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -56,7 +60,7 @@ jobs:
           WITH_V: true
 
       - name: Release
-        if: steps.tag.outputs.new_tag
+        if: github.event_name == 'push' && steps.tag.outputs.new_tag
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh release create "${{ steps.tag.outputs.new_tag }}" --title "${{ steps.tag.outputs.new_tag }}" --generate-notes

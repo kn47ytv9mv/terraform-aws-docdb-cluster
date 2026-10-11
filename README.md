@@ -160,78 +160,73 @@ module "cluster" {
 }
 ```
 
+<!-- BEGIN_TF_DOCS -->
 ## Requirements
 
 | Name | Version |
-|---|---|
+| ---- | ------- |
 | terraform | >= 1.11 |
-| aws | ~> 6.61 |
-| random | ~> 3.9 |
-
-## Providers
-
-| Name | Version |
-|---|---|
 | aws | ~> 6.61 |
 | random | ~> 3.9 |
 
 ## Inputs
 
-| Name | Description | Default | Required |
-|---|---|---|---|
-| cluster_identifier | The identifier of the cluster: a letter first, then lowercase letters, digits and hyphens, ending alphanumerically, at most 63 characters, and unique across Amazon RDS, Neptune and DocumentDB in the account and Region. Instances are named after it with their index. If null, one is generated. | `null` | no |
-| engine | The cluster engine. DocumentDB has exactly one, `'docdb'`. It cannot be changed after creation. | `"docdb"` | no |
-| engine_version | The engine version (for example `'5.0.0'`), naming the MongoDB API level the cluster emulates. If null, AWS picks its current default, which moves between major versions, so pin it for a workload that depends on an API level. | `null` | no |
-| instance_count | The number of instances, 0 to 16. The first is the primary and the rest are promotable replicas. Use at least 2, preferably 3 across three availability zones, to survive losing the primary. A count of 0 creates the storage with no compute. | `1` | no |
-| instance_class | The compute and memory capacity of every instance (for example `'db.r6g.large'`). | `null` | no |
-| master_username | The primary user name, 1 to 63 alphanumeric characters beginning with a letter. Changing it replaces the cluster. | `null` | no |
-| master_password | The primary user password, 8 to 100 printable ASCII characters excluding /, " and @. It is stored in state in plain text, so prefer `manage_master_user_password` or `master_password_wo`. Mutually exclusive with both. | `null` | no |
-| master_password_wo | The primary user password as a write-only value, never stored in state. Requires `master_password_wo_version`. Mutually exclusive with `master_password` and `manage_master_user_password`. | `null` | no |
-| master_password_wo_version | The version counter for `master_password_wo`. Increment it to push a changed password, since Terraform cannot diff the write-only value itself. | `null` | no |
-| manage_master_user_password | Controls whether AWS generates the primary user password and rotates it in Secrets Manager. This is the recommended option. The secret always uses the AWS-managed Secrets Manager key; see Design. Mutually exclusive with `master_password` and `master_password_wo`. | `null` | no |
-| storage_encrypted | Controls whether storage is encrypted at rest. It defaults to true because encryption cannot be added to an existing cluster without a snapshot-and-restore migration. | `true` | no |
-| kms_key_id | The ARN of the KMS key encrypting storage, from `terraform-aws-kms-key`. Used only when `storage_encrypted` is true. If null, the AWS-managed RDS key is used. | `null` | no |
-| storage_type | The storage configuration, `'standard'` or `'iopt1'`. `'iopt1'` replaces the per-I/O charge with a higher storage rate, which is cheaper for I/O-heavy workloads. If null, `'standard'`. | `null` | no |
-| db_subnet_group_name | The name of the DB subnet group placing the cluster in a VPC, from `terraform-aws-db-subnet-group`; DocumentDB shares subnet groups with Amazon RDS. If null, the Region's default group is used. | `null` | no |
-| vpc_security_group_ids | The IDs of the security groups controlling access, from `terraform-aws-vpc-security-groups`. Each must allow inbound traffic on the cluster's port. | `null` | no |
-| availability_zones | The availability zones the cluster may use. DocumentDB picks three regardless and rejects an instance outside them. If null, AWS chooses. | `null` | no |
-| port | The port every instance accepts connections on. If null, 27017. | `null` | no |
-| db_cluster_parameter_group_name | The name of the cluster parameter group, from `terraform-aws-docdb-cluster-parameter-group`. Its family must match the major version, and it is required for audit or profiler logging. If null, AWS's default group applies. | `null` | no |
-| backup_retention_period | The number of days automated backups are retained, 1 to 35. It defaults to 7 rather than AWS's 1. | `7` | no |
-| preferred_backup_window | The daily UTC window for automated backups (for example `'03:00-04:00'`). It must not overlap `preferred_maintenance_window`. If null, AWS assigns one. | `null` | no |
-| preferred_maintenance_window | The weekly UTC window for cluster maintenance (for example `'sun:05:00-sun:06:00'`). If null, AWS assigns one. | `null` | no |
-| instance_preferred_maintenance_window | The weekly UTC window for instance patching, applied identically to every instance. If null, AWS assigns one per instance. | `null` | no |
-| skip_final_snapshot | Controls whether destroying the cluster skips the final snapshot. It defaults to false, which makes `final_snapshot_identifier` required. | `false` | no |
-| final_snapshot_identifier | The name of the snapshot taken on destroy, unique among existing snapshots. Required unless `skip_final_snapshot` is true. | `null` | no |
-| deletion_protection | Controls whether AWS refuses to delete the cluster. Enabling it makes terraform destroy fail until a separate apply turns it off. The AWS console enables it by default, so an imported cluster may arrive with it on. | `false` | no |
-| auto_minor_version_upgrade | Controls whether minor engine upgrades are applied automatically in each instance's maintenance window. If null, they are. | `null` | no |
-| allow_major_version_upgrade | Controls whether an `engine_version` change across a major version is allowed; AWS rejects it otherwise. A major upgrade changes the emulated MongoDB API level. | `null` | no |
-| apply_immediately | Controls whether changes apply immediately rather than in the next maintenance window. Immediate changes can cause downtime. If null, changes are deferred. | `null` | no |
-| enabled_cloudwatch_logs_exports | The log types exported to CloudWatch Logs, of which only `'audit'` and `'profiler'` exist. Each also needs its parameter set in the cluster parameter group, or the log group stays empty; see Design. | `null` | no |
-| enable_performance_insights | Controls whether Performance Insights collects load metrics on each instance. If null, it is off. | `null` | no |
-| performance_insights_kms_key_id | The ARN of the KMS key encrypting Performance Insights data. If null, the AWS-managed key is used. | `null` | no |
-| promotion_tier | The failover priority of every instance, 0 to 15; the lowest-numbered healthy replica is promoted. It is applied identically, so failover order among instances is AWS's choice. | `null` | no |
-| ca_cert_identifier | The certificate authority for each instance's TLS certificate (for example `'rds-ca-rsa2048-g1'`). If null, AWS's current default. | `null` | no |
-| snapshot_identifier | The identifier or ARN of a snapshot to restore from. The cluster keeps the snapshot's engine version and encryption state. | `null` | no |
-| restore_to_point_in_time | The settings for restoring from another cluster's continuous backups. Set `restore_to_time` (an RFC 3339 timestamp inside the source's retention window) or `use_latest_restorable_time`. Changing any field replaces the cluster. | `null` | no |
-| global_cluster_identifier | The identifier of a DocumentDB global cluster to join. A secondary member sets neither `master_username` nor a password. | `null` | no |
-| tags | A map of tags to assign to the cluster and every instance in it. | `null` | no |
+| Name | Description | Type | Default | Required |
+| ---- | ----------- | ---- | ------- | :------: |
+| cluster_identifier | The identifier of the cluster: a letter first, then lowercase letters, digits and hyphens, ending alphanumerically, at most 63 characters, and unique across Amazon RDS, Neptune and DocumentDB in the account and Region. Instances are named after it with their index. If null, one is generated. | `string` | `null` | no |
+| engine | The cluster engine. DocumentDB has exactly one, 'docdb'. It cannot be changed after creation. | `string` | `"docdb"` | no |
+| engine_version | The engine version (for example '5.0.0'), naming the MongoDB API level the cluster emulates. If null, AWS picks its current default, which moves between major versions, so pin it for a workload that depends on an API level. | `string` | `null` | no |
+| instance_count | The number of instances, 0 to 16. The first is the primary and the rest are promotable replicas. Use at least 2, preferably 3 across three availability zones, to survive losing the primary. A count of 0 creates the storage with no compute. | `number` | `1` | no |
+| instance_class | The compute and memory capacity of every instance (for example 'db.r6g.large'). | `string` | `null` | no |
+| master_username | The primary user name, 1 to 63 alphanumeric characters beginning with a letter. Changing it replaces the cluster. | `string` | `null` | no |
+| master_password | The primary user password, 8 to 100 printable ASCII characters excluding /, " and @. It is stored in state in plain text, so prefer manage_master_user_password or master_password_wo. Mutually exclusive with both. | `string` | `null` | no |
+| master_password_wo | The primary user password as a write-only value, never stored in state. Requires master_password_wo_version. Mutually exclusive with master_password and manage_master_user_password. | `string` | `null` | no |
+| master_password_wo_version | The version counter for master_password_wo. Increment it to push a changed password, since Terraform cannot diff the write-only value itself. | `number` | `null` | no |
+| manage_master_user_password | Controls whether AWS generates the primary user password and rotates it in Secrets Manager. This is the recommended option. The secret always uses the AWS-managed Secrets Manager key; see Design. Mutually exclusive with master_password and master_password_wo. | `bool` | `null` | no |
+| storage_encrypted | Controls whether storage is encrypted at rest. It defaults to true because encryption cannot be added to an existing cluster without a snapshot-and-restore migration. | `bool` | `true` | no |
+| kms_key_id | The ARN of the KMS key encrypting storage, from terraform-aws-kms-key. Used only when storage_encrypted is true. If null, the AWS-managed RDS key is used. | `string` | `null` | no |
+| storage_type | The storage configuration, 'standard' or 'iopt1'. 'iopt1' replaces the per-I/O charge with a higher storage rate, which is cheaper for I/O-heavy workloads. If null, 'standard'. | `string` | `null` | no |
+| db_subnet_group_name | The name of the DB subnet group placing the cluster in a VPC, from terraform-aws-db-subnet-group; DocumentDB shares subnet groups with Amazon RDS. If null, the Region's default group is used. | `string` | `null` | no |
+| vpc_security_group_ids | The IDs of the security groups controlling access, from terraform-aws-vpc-security-groups. Each must allow inbound traffic on the cluster's port. | `list(string)` | `null` | no |
+| availability_zones | The availability zones the cluster may use. DocumentDB picks three regardless and rejects an instance outside them. If null, AWS chooses. | `list(string)` | `null` | no |
+| port | The port every instance accepts connections on. If null, 27017. | `number` | `null` | no |
+| db_cluster_parameter_group_name | The name of the cluster parameter group, from terraform-aws-docdb-cluster-parameter-group. Its family must match the major version, and it is required for audit or profiler logging. If null, AWS's default group applies. | `string` | `null` | no |
+| backup_retention_period | The number of days automated backups are retained, 1 to 35. It defaults to 7 rather than AWS's 1. | `number` | `7` | no |
+| preferred_backup_window | The daily UTC window for automated backups (for example '03:00-04:00'). It must not overlap preferred_maintenance_window. If null, AWS assigns one. | `string` | `null` | no |
+| preferred_maintenance_window | The weekly UTC window for cluster maintenance (for example 'sun:05:00-sun:06:00'). If null, AWS assigns one. | `string` | `null` | no |
+| instance_preferred_maintenance_window | The weekly UTC window for instance patching, applied identically to every instance. If null, AWS assigns one per instance. | `string` | `null` | no |
+| skip_final_snapshot | Controls whether destroying the cluster skips the final snapshot. It defaults to false, which makes final_snapshot_identifier required. | `bool` | `false` | no |
+| final_snapshot_identifier | The name of the snapshot taken on destroy, unique among existing snapshots. Required unless skip_final_snapshot is true. | `string` | `null` | no |
+| deletion_protection | Controls whether AWS refuses to delete the cluster. Enabling it makes terraform destroy fail until a separate apply turns it off. The AWS console enables it by default, so an imported cluster may arrive with it on. | `bool` | `false` | no |
+| auto_minor_version_upgrade | Controls whether minor engine upgrades are applied automatically in each instance's maintenance window. If null, they are. | `bool` | `null` | no |
+| allow_major_version_upgrade | Controls whether an engine_version change across a major version is allowed; AWS rejects it otherwise. A major upgrade changes the emulated MongoDB API level. | `bool` | `null` | no |
+| apply_immediately | Controls whether changes apply immediately rather than in the next maintenance window. Immediate changes can cause downtime. If null, changes are deferred. | `bool` | `null` | no |
+| enabled_cloudwatch_logs_exports | The log types exported to CloudWatch Logs, of which only 'audit' and 'profiler' exist. Each also needs its parameter set in the cluster parameter group, or the log group stays empty; see Design. | `list(string)` | `null` | no |
+| enable_performance_insights | Controls whether Performance Insights collects load metrics on each instance. If null, it is off. | `bool` | `null` | no |
+| performance_insights_kms_key_id | The ARN of the KMS key encrypting Performance Insights data. If null, the AWS-managed key is used. | `string` | `null` | no |
+| promotion_tier | The failover priority of every instance, 0 to 15; the lowest-numbered healthy replica is promoted. It is applied identically, so failover order among instances is AWS's choice. | `number` | `null` | no |
+| ca_cert_identifier | The certificate authority for each instance's TLS certificate (for example 'rds-ca-rsa2048-g1'). If null, AWS's current default. | `string` | `null` | no |
+| snapshot_identifier | The identifier or ARN of a snapshot to restore from. The cluster keeps the snapshot's engine version and encryption state. | `string` | `null` | no |
+| restore_to_point_in_time | The settings for restoring from another cluster's continuous backups. Set restore_to_time (an RFC 3339 timestamp inside the source's retention window) or use_latest_restorable_time. Changing any field replaces the cluster. | <pre>object({<br/>    source_cluster_identifier  = string<br/>    restore_type               = optional(string)<br/>    restore_to_time            = optional(string)<br/>    use_latest_restorable_time = optional(bool)<br/>  })</pre> | `null` | no |
+| global_cluster_identifier | The identifier of a DocumentDB global cluster to join. A secondary member sets neither master_username nor a password. | `string` | `null` | no |
+| tags | A map of tags to assign to the cluster and every instance in it. | `map(string)` | `null` | no |
 
 ## Outputs
 
 | Name | Description |
-|---|---|
+| ---- | ----------- |
 | id | The ID of the cluster. |
 | arn | The ARN of the cluster, in the RDS ARN namespace (arn:aws:rds:...:cluster/...). |
 | cluster_identifier | The identifier of the cluster. |
 | endpoint | The primary endpoint. Point a MongoDB driver here; it follows the primary across a failover. |
 | reader_endpoint | The reader endpoint, balancing across replicas. Use it with read preference secondaryPreferred. It is empty until a replica exists. |
 | port | The port the cluster accepts connections on. |
-| hosted_zone_id | The Route 53 hosted zone ID of the endpoint, for an alias record in `terraform-aws-route53-record`. |
+| hosted_zone_id | The Route 53 hosted zone ID of the endpoint, for an alias record in terraform-aws-route53-record. |
 | cluster_resource_id | The immutable resource ID of the cluster, used in IAM policies that name the cluster resource. |
-| master_user_secret | The Secrets Manager secret AWS created for the primary user password when `manage_master_user_password` is enabled. It is empty otherwise. |
+| master_user_secret | The Secrets Manager secret AWS created for the primary user password when manage_master_user_password is enabled. It is empty otherwise. |
 | instance_identifiers | The identifiers of every instance in the cluster, in creation order. The first is the initial primary. |
 | instance_endpoints | The per-instance endpoints, for connecting to one specific member. |
+<!-- END_TF_DOCS -->
 
 ## License
 
