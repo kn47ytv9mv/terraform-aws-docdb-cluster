@@ -94,41 +94,41 @@ output "cluster_identifier" {
 }
 
 output "endpoint" {
-  description = "Primary endpoint. Point a MongoDB driver here; it follows the primary across a failover."
+  description = "The primary endpoint. Point a MongoDB driver here; it follows the primary across a failover."
   value       = aws_docdb_cluster.resource.endpoint
 }
 
 output "reader_endpoint" {
-  description = "Reader endpoint, balancing across replicas. Use with read preference secondaryPreferred. Empty until a replica exists."
+  description = "The reader endpoint, balancing across replicas. Use it with read preference secondaryPreferred. It is empty until a replica exists."
   value       = aws_docdb_cluster.resource.reader_endpoint
 }
 
 output "port" {
-  description = "Port the cluster accepts connections on."
+  description = "The port the cluster accepts connections on."
   value       = aws_docdb_cluster.resource.port
 }
 
 output "hosted_zone_id" {
-  description = "Route 53 hosted zone ID of the endpoint, for an alias record in terraform-aws-route53-record."
+  description = "The Route 53 hosted zone ID of the endpoint, for an alias record in terraform-aws-route53-record."
   value       = aws_docdb_cluster.resource.hosted_zone_id
 }
 
 output "cluster_resource_id" {
-  description = "Immutable resource ID of the cluster, used in IAM policies that name the cluster resource."
+  description = "The immutable resource ID of the cluster, used in IAM policies that name the cluster resource."
   value       = aws_docdb_cluster.resource.cluster_resource_id
 }
 
 output "master_user_secret" {
-  description = "Secrets Manager secret AWS created for the primary user password when manage_master_user_password is enabled. Empty otherwise."
+  description = "The Secrets Manager secret AWS created for the primary user password when manage_master_user_password is enabled. It is empty otherwise."
   value       = aws_docdb_cluster.resource.master_user_secret
 }
 
 output "instance_identifiers" {
-  description = "Identifiers of every instance in the cluster, in creation order. The first is the initial primary."
+  description = "The identifiers of every instance in the cluster, in creation order. The first is the initial primary."
   value       = aws_docdb_cluster_instance.resource[*].identifier
 }
 
 output "instance_endpoints" {
-  description = "Per-instance endpoints, for connecting to one specific member."
+  description = "The per-instance endpoints, for connecting to one specific member."
   value       = aws_docdb_cluster_instance.resource[*].endpoint
 }
