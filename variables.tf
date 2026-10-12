@@ -21,23 +21,6 @@ variable "engine_version" {
   default     = null
 }
 
-variable "instance_count" {
-  type        = number
-  description = "The number of instances, 0 to 16. The first is the primary and the rest are promotable replicas. Use at least 2, preferably 3 across three availability zones, to survive losing the primary. A count of 0 creates the storage with no compute."
-  default     = 1
-
-  validation {
-    condition     = var.instance_count >= 0 && var.instance_count <= 16
-    error_message = "instance_count must be between 0 and 16, since a cluster supports one primary and at most 15 replicas."
-  }
-}
-
-variable "instance_class" {
-  type        = string
-  description = "The compute and memory capacity of every instance (for example 'db.r6g.large')."
-  default     = null
-}
-
 variable "master_username" {
   type        = string
   description = "The primary user name, 1 to 63 alphanumeric characters beginning with a letter. Changing it replaces the cluster."
@@ -70,7 +53,7 @@ variable "master_password_wo_version" {
 
   validation {
     condition     = (var.master_password_wo == null) == (var.master_password_wo_version == null)
-    error_message = "master_password_wo and master_password_wo_version must be set together."
+    error_message = "The master_password_wo and master_password_wo_version must be set together."
   }
 }
 
@@ -99,7 +82,7 @@ variable "storage_type" {
 
   validation {
     condition     = var.storage_type == null || contains(["standard", "iopt1"], var.storage_type)
-    error_message = "storage_type must be either 'standard' or 'iopt1'."
+    error_message = "The storage_type must be either 'standard' or 'iopt1'."
   }
 }
 
@@ -140,7 +123,7 @@ variable "backup_retention_period" {
 
   validation {
     condition     = var.backup_retention_period == null || (var.backup_retention_period >= 1 && var.backup_retention_period <= 35)
-    error_message = "backup_retention_period must be between 1 and 35 days."
+    error_message = "The backup_retention_period must be between 1 and 35 days."
   }
 }
 
@@ -153,12 +136,6 @@ variable "preferred_backup_window" {
 variable "preferred_maintenance_window" {
   type        = string
   description = "The weekly UTC window for cluster maintenance (for example 'sun:05:00-sun:06:00'). If null, AWS assigns one."
-  default     = null
-}
-
-variable "instance_preferred_maintenance_window" {
-  type        = string
-  description = "The weekly UTC window for instance patching, applied identically to every instance. If null, AWS assigns one per instance."
   default     = null
 }
 
@@ -175,7 +152,7 @@ variable "final_snapshot_identifier" {
 
   validation {
     condition     = var.skip_final_snapshot || var.final_snapshot_identifier != null
-    error_message = "final_snapshot_identifier is required unless skip_final_snapshot is true, since a destroy would otherwise fail at teardown time rather than here."
+    error_message = "The final_snapshot_identifier is required unless skip_final_snapshot is true, since a destroy would otherwise fail at teardown time rather than here."
   }
 }
 
@@ -183,12 +160,6 @@ variable "deletion_protection" {
   type        = bool
   description = "Controls whether AWS refuses to delete the cluster. Enabling it makes terraform destroy fail until a separate apply turns it off. The AWS console enables it by default, so an imported cluster may arrive with it on."
   default     = false
-}
-
-variable "auto_minor_version_upgrade" {
-  type        = bool
-  description = "Controls whether minor engine upgrades are applied automatically in each instance's maintenance window. If null, they are."
-  default     = null
 }
 
 variable "allow_major_version_upgrade" {
@@ -210,7 +181,58 @@ variable "enabled_cloudwatch_logs_exports" {
 
   validation {
     condition     = var.enabled_cloudwatch_logs_exports == null || length(setsubtract(toset(var.enabled_cloudwatch_logs_exports), toset(["audit", "profiler"]))) == 0
-    error_message = "enabled_cloudwatch_logs_exports accepts only 'audit' and 'profiler'; the RDS log types are not valid for DocumentDB."
+    error_message = "The enabled_cloudwatch_logs_exports accepts only 'audit' and 'profiler'; the RDS log types are not valid for DocumentDB."
+  }
+}
+
+variable "snapshot_identifier" {
+  type        = string
+  description = "The identifier or ARN of a snapshot to restore from. The cluster keeps the snapshot's engine version and encryption state."
+  default     = null
+}
+
+variable "global_cluster_identifier" {
+  type        = string
+  description = "The identifier of a DocumentDB global cluster to join. A secondary member sets neither master_username nor a password."
+  default     = null
+}
+
+variable "restore_to_point_in_time" {
+  type = object({
+    source_cluster_identifier  = string
+    restore_type               = optional(string)
+    restore_to_time            = optional(string)
+    use_latest_restorable_time = optional(bool)
+  })
+  description = "The settings for restoring from another cluster's continuous backups. Set restore_to_time (an RFC 3339 timestamp inside the source's retention window) or use_latest_restorable_time. Changing any field replaces the cluster."
+  default     = null
+}
+
+variable "instance_count" {
+  type        = number
+  description = "The number of instances, 0 to 16. The first is the primary and the rest are promotable replicas. Use at least 2, preferably 3 across three availability zones, to survive losing the primary. A count of 0 creates the storage with no compute."
+  default     = 1
+
+  validation {
+    condition     = var.instance_count >= 0 && var.instance_count <= 16
+    error_message = "The instance_count must be between 0 and 16, since a cluster supports one primary and at most 15 replicas."
+  }
+}
+
+variable "instance_class" {
+  type        = string
+  description = "The compute and memory capacity of every instance (for example 'db.r6g.large')."
+  default     = null
+}
+
+variable "promotion_tier" {
+  type        = number
+  description = "The failover priority of every instance, 0 to 15; the lowest-numbered healthy replica is promoted. It is applied identically, so failover order among instances is AWS's choice."
+  default     = null
+
+  validation {
+    condition     = var.promotion_tier == null || (var.promotion_tier >= 0 && var.promotion_tier <= 15)
+    error_message = "The promotion_tier must be between 0 and 15."
   }
 }
 
@@ -226,43 +248,21 @@ variable "performance_insights_kms_key_id" {
   default     = null
 }
 
-variable "promotion_tier" {
-  type        = number
-  description = "The failover priority of every instance, 0 to 15; the lowest-numbered healthy replica is promoted. It is applied identically, so failover order among instances is AWS's choice."
+variable "auto_minor_version_upgrade" {
+  type        = bool
+  description = "Controls whether minor engine upgrades are applied automatically in each instance's maintenance window. If null, they are."
   default     = null
+}
 
-  validation {
-    condition     = var.promotion_tier == null || (var.promotion_tier >= 0 && var.promotion_tier <= 15)
-    error_message = "promotion_tier must be between 0 and 15."
-  }
+variable "instance_preferred_maintenance_window" {
+  type        = string
+  description = "The weekly UTC window for instance patching, applied identically to every instance. If null, AWS assigns one per instance."
+  default     = null
 }
 
 variable "ca_cert_identifier" {
   type        = string
   description = "The certificate authority for each instance's TLS certificate (for example 'rds-ca-rsa2048-g1'). If null, AWS's current default."
-  default     = null
-}
-
-variable "snapshot_identifier" {
-  type        = string
-  description = "The identifier or ARN of a snapshot to restore from. The cluster keeps the snapshot's engine version and encryption state."
-  default     = null
-}
-
-variable "restore_to_point_in_time" {
-  type = object({
-    source_cluster_identifier  = string
-    restore_type               = optional(string)
-    restore_to_time            = optional(string)
-    use_latest_restorable_time = optional(bool)
-  })
-  description = "The settings for restoring from another cluster's continuous backups. Set restore_to_time (an RFC 3339 timestamp inside the source's retention window) or use_latest_restorable_time. Changing any field replaces the cluster."
-  default     = null
-}
-
-variable "global_cluster_identifier" {
-  type        = string
-  description = "The identifier of a DocumentDB global cluster to join. A secondary member sets neither master_username nor a password."
   default     = null
 }
 

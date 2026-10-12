@@ -1,8 +1,8 @@
+resource "random_uuid" "resource" {}
+
 locals {
   cluster_identifier = coalesce(var.cluster_identifier, "docdb-${random_uuid.resource.id}")
 }
-
-resource "random_uuid" "resource" {}
 
 resource "aws_docdb_cluster" "resource" {
   cluster_identifier = local.cluster_identifier

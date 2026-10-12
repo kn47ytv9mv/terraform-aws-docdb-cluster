@@ -1,6 +1,6 @@
 # terraform-aws-docdb-cluster
 
-Terraform module for an Amazon DocumentDB cluster and its instances.
+A Terraform module for an Amazon DocumentDB cluster and its instances.
 
 ## Cost
 
@@ -8,7 +8,7 @@ DocumentDB bills each instance by the second, with a ten-minute minimum,
 and bills storage by the gigabyte-month. On standard storage it also
 bills every million I/O requests. The I/O-optimized storage type
 (`storage_type = "iopt1"`) removes that charge in exchange for a higher
-storage rate, which is the cheaper choice for a busy cluster. Every
+storage rate. It is the cheaper choice for a busy cluster. Every
 instance added through `instance_count` is charged in full at the rate
 of its instance class, although all instances share a single copy of the
 storage.
@@ -22,11 +22,11 @@ standard support, such as 3.6, adds an Extended Support charge for every
 instance.
 
 Several options bill in other services. Exporting logs bills CloudWatch
-Logs for ingestion and storage, letting AWS manage the password bills a
-Secrets Manager secret, a customer-managed KMS key bills for the key and
-its requests, and Performance Insights bills once data is kept beyond its
+Logs for ingestion and storage. Letting AWS manage the password bills a
+Secrets Manager secret. A customer-managed KMS key bills for the key and
+its requests. Performance Insights bills once data is kept beyond its
 free retention. Traffic between the cluster and clients in the same
-availability zone is free, as is replication between zones, but traffic
+availability zone is free, and so is replication between zones. Traffic
 that crosses zones or leaves the Region is billed. A cluster that joins a
 global cluster also pays for its write I/O to be replicated into every
 secondary Region. See
@@ -80,7 +80,7 @@ key from
 
 ### Log exports
 
-Exporting the audit or profiler log only ships it to CloudWatch; whether
+Exporting the audit or profiler log only ships it to CloudWatch. Whether
 the log is written at all is decided by the cluster parameter group from
 [`terraform-aws-docdb-cluster-parameter-group`](https://github.com/kn47ytv9mv/terraform-aws-docdb-cluster-parameter-group).
 The audit log needs `audit_logs` turned on there, and the profiler log
@@ -176,8 +176,6 @@ module "cluster" {
 | cluster_identifier | The identifier of the cluster: a letter first, then lowercase letters, digits and hyphens, ending alphanumerically, at most 63 characters, and unique across Amazon RDS, Neptune and DocumentDB in the account and Region. Instances are named after it with their index. If null, one is generated. | `string` | `null` | no |
 | engine | The cluster engine. DocumentDB has exactly one, 'docdb'. It cannot be changed after creation. | `string` | `"docdb"` | no |
 | engine_version | The engine version (for example '5.0.0'), naming the MongoDB API level the cluster emulates. If null, AWS picks its current default, which moves between major versions, so pin it for a workload that depends on an API level. | `string` | `null` | no |
-| instance_count | The number of instances, 0 to 16. The first is the primary and the rest are promotable replicas. Use at least 2, preferably 3 across three availability zones, to survive losing the primary. A count of 0 creates the storage with no compute. | `number` | `1` | no |
-| instance_class | The compute and memory capacity of every instance (for example 'db.r6g.large'). | `string` | `null` | no |
 | master_username | The primary user name, 1 to 63 alphanumeric characters beginning with a letter. Changing it replaces the cluster. | `string` | `null` | no |
 | master_password | The primary user password, 8 to 100 printable ASCII characters excluding /, " and @. It is stored in state in plain text, so prefer manage_master_user_password or master_password_wo. Mutually exclusive with both. | `string` | `null` | no |
 | master_password_wo | The primary user password as a write-only value, never stored in state. Requires master_password_wo_version. Mutually exclusive with master_password and manage_master_user_password. | `string` | `null` | no |
@@ -194,21 +192,23 @@ module "cluster" {
 | backup_retention_period | The number of days automated backups are retained, 1 to 35. It defaults to 7 rather than AWS's 1. | `number` | `7` | no |
 | preferred_backup_window | The daily UTC window for automated backups (for example '03:00-04:00'). It must not overlap preferred_maintenance_window. If null, AWS assigns one. | `string` | `null` | no |
 | preferred_maintenance_window | The weekly UTC window for cluster maintenance (for example 'sun:05:00-sun:06:00'). If null, AWS assigns one. | `string` | `null` | no |
-| instance_preferred_maintenance_window | The weekly UTC window for instance patching, applied identically to every instance. If null, AWS assigns one per instance. | `string` | `null` | no |
 | skip_final_snapshot | Controls whether destroying the cluster skips the final snapshot. It defaults to false, which makes final_snapshot_identifier required. | `bool` | `false` | no |
 | final_snapshot_identifier | The name of the snapshot taken on destroy, unique among existing snapshots. Required unless skip_final_snapshot is true. | `string` | `null` | no |
 | deletion_protection | Controls whether AWS refuses to delete the cluster. Enabling it makes terraform destroy fail until a separate apply turns it off. The AWS console enables it by default, so an imported cluster may arrive with it on. | `bool` | `false` | no |
-| auto_minor_version_upgrade | Controls whether minor engine upgrades are applied automatically in each instance's maintenance window. If null, they are. | `bool` | `null` | no |
 | allow_major_version_upgrade | Controls whether an engine_version change across a major version is allowed; AWS rejects it otherwise. A major upgrade changes the emulated MongoDB API level. | `bool` | `null` | no |
 | apply_immediately | Controls whether changes apply immediately rather than in the next maintenance window. Immediate changes can cause downtime. If null, changes are deferred. | `bool` | `null` | no |
 | enabled_cloudwatch_logs_exports | The log types exported to CloudWatch Logs, of which only 'audit' and 'profiler' exist. Each also needs its parameter set in the cluster parameter group, or the log group stays empty; see Design. | `list(string)` | `null` | no |
+| snapshot_identifier | The identifier or ARN of a snapshot to restore from. The cluster keeps the snapshot's engine version and encryption state. | `string` | `null` | no |
+| global_cluster_identifier | The identifier of a DocumentDB global cluster to join. A secondary member sets neither master_username nor a password. | `string` | `null` | no |
+| restore_to_point_in_time | The settings for restoring from another cluster's continuous backups. Set restore_to_time (an RFC 3339 timestamp inside the source's retention window) or use_latest_restorable_time. Changing any field replaces the cluster. | <pre>object({<br/>    source_cluster_identifier  = string<br/>    restore_type               = optional(string)<br/>    restore_to_time            = optional(string)<br/>    use_latest_restorable_time = optional(bool)<br/>  })</pre> | `null` | no |
+| instance_count | The number of instances, 0 to 16. The first is the primary and the rest are promotable replicas. Use at least 2, preferably 3 across three availability zones, to survive losing the primary. A count of 0 creates the storage with no compute. | `number` | `1` | no |
+| instance_class | The compute and memory capacity of every instance (for example 'db.r6g.large'). | `string` | `null` | no |
+| promotion_tier | The failover priority of every instance, 0 to 15; the lowest-numbered healthy replica is promoted. It is applied identically, so failover order among instances is AWS's choice. | `number` | `null` | no |
 | enable_performance_insights | Controls whether Performance Insights collects load metrics on each instance. If null, it is off. | `bool` | `null` | no |
 | performance_insights_kms_key_id | The ARN of the KMS key encrypting Performance Insights data. If null, the AWS-managed key is used. | `string` | `null` | no |
-| promotion_tier | The failover priority of every instance, 0 to 15; the lowest-numbered healthy replica is promoted. It is applied identically, so failover order among instances is AWS's choice. | `number` | `null` | no |
+| auto_minor_version_upgrade | Controls whether minor engine upgrades are applied automatically in each instance's maintenance window. If null, they are. | `bool` | `null` | no |
+| instance_preferred_maintenance_window | The weekly UTC window for instance patching, applied identically to every instance. If null, AWS assigns one per instance. | `string` | `null` | no |
 | ca_cert_identifier | The certificate authority for each instance's TLS certificate (for example 'rds-ca-rsa2048-g1'). If null, AWS's current default. | `string` | `null` | no |
-| snapshot_identifier | The identifier or ARN of a snapshot to restore from. The cluster keeps the snapshot's engine version and encryption state. | `string` | `null` | no |
-| restore_to_point_in_time | The settings for restoring from another cluster's continuous backups. Set restore_to_time (an RFC 3339 timestamp inside the source's retention window) or use_latest_restorable_time. Changing any field replaces the cluster. | <pre>object({<br/>    source_cluster_identifier  = string<br/>    restore_type               = optional(string)<br/>    restore_to_time            = optional(string)<br/>    use_latest_restorable_time = optional(bool)<br/>  })</pre> | `null` | no |
-| global_cluster_identifier | The identifier of a DocumentDB global cluster to join. A secondary member sets neither master_username nor a password. | `string` | `null` | no |
 | tags | A map of tags to assign to the cluster and every instance in it. | `map(string)` | `null` | no |
 
 ## Outputs
@@ -230,4 +230,4 @@ module "cluster" {
 
 ## License
 
-MIT — see [LICENSE.md](LICENSE.md).
+MIT - see [LICENSE.md](LICENSE.md).
